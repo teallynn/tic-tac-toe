@@ -1,4 +1,4 @@
-//(function(){
+(function(){
   //Initial Game and Player variables and states
   let $board = $('.board');
   let $startScreen = $('#start');
@@ -20,6 +20,7 @@
   $board.hide();
   $('#start-name').hide();
   $('#start-button').hide();
+  $('#name-error').hide();
   $endScreen.hide();
 
   // Game type button event listeners
@@ -47,20 +48,22 @@
     if (gameType === 'computer') {
       player1Name = $('#start-name').val();
       if (player1Name === '') {
-        $('#start-button').before('<p style="color, red" id="name-error">Please enter a name for player</p>')
+        $('#name-error').show();
       } else {
         $('#player-1-name').text('Player 1: ' + player1Name);
         $('#player-2-name').text('Player 2: Computer');
+        clickSpaceListener();
+        $board.show();
+        $startScreen.hide();
+        hoverImageListener();
+        $('#name-error').hide();
       }
-      if ($('#name-error')) {
-        $('#name-error').remove();
-      }
-      $('#start-name').val('');
+    } else if (gameType === '2-player') {
+      clickSpaceListener();
+      $board.show();
+      $startScreen.hide();
+      hoverImageListener();
     }
-    clickSpaceListener();
-    $board.show();
-    $startScreen.hide();
-    hoverImageListener();
   });
 
   /***************************************************************************
@@ -90,6 +93,9 @@
   }
 
   /***************************************************************************
+   * Gets the available game spaces and chooses one using a random number.
+   * Selects the game space for X and yields the turn to the O player. The
+   * completeTurn function is called to disable the space and check for a win.
    ***************************************************************************
    */
    function computerTurn() {
@@ -240,7 +246,10 @@
     $('.screen-win').removeClass('screen-win-two');
     $('.screen-win').removeClass('screen-win-tie');
   }
+
   /****************************************************************************
+   * Complete's a turn by disabling events on the space and checking the win
+   * conditions to see if the game should end. Ends game if applicable.
    ****************************************************************************
    */
   function completeTurn(gameSpace) {
@@ -251,22 +260,24 @@
     hasXwon();
     isGameOver();
     if (gameOver == true) {
-      setTimeout(endGame, 250);
+      setTimeout(endGame, 500);
     }
   }
 
   /**************************************************************************
    * Board space hover event listener, shows the symbol of the active player
    * when they hover over open spaces. Inside a function to avoid double
-   * listeners in new games on spaces that weren't used in previous game.
+   * listeners in new games on spaces that weren't used in previous game. Only
+   * O will show on hover when playing against the computer, otherwise O and X
+   * will alternate with the appropriate turns.
    **************************************************************************
    */
   function hoverImageListener() {
     $('.box').hover(function() {
       let $space = $(this);
-      if (playerXActive) {
+      if (playerXActive && gameType === '2-player') {
         $space.css('background-image', 'url(img/x.svg)');
-      } else if (playerOActive) {
+      } else {
         $space.css('background-image', 'url(img/o.svg)');
       }
     }, function() {
@@ -288,7 +299,7 @@
       let $box = $(this);
       playerTurn($box);
       if (gameType === 'computer') {
-      setTimeout(computerTurn, 500);
+        setTimeout(computerTurn, 100);
       }
     });
   }
@@ -309,4 +320,4 @@
     clickSpaceListener();
   });
 
-//}());
+}());
