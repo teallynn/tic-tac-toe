@@ -1,4 +1,4 @@
-//(function(){
+(function(){
   //Initial Game and Player variables and states
   let $board = $('.board');
   let $startScreen = $('#start');
@@ -14,10 +14,29 @@
   $('#player1').addClass('active');
   let oSpaces = [];
   let xSpaces = [];
+  let gameType = '';
 
   // Start Screen visible until Start Button pushed when board is shown
   $board.hide();
+  $('#start-name').hide();
+  $('#start-button').hide();
+  $('#name-error').hide();
   $endScreen.hide();
+
+  // Game type button event listeners
+  $('.2-player').click(function() {
+    gameType = '2-player';
+    $('#game-type').hide();
+    $('#start-button').show();
+  });
+
+  $('.computer').click(function() {
+    gameType = 'computer';
+    $('#game-type').hide();
+    $('#start-name').show();
+    $('#start-button').show();
+  });
+
 
   /***************************************************************************
    * Start button event listeneer captures players name and starts game by hiding
@@ -26,19 +45,24 @@
    **************************************************************************
    */
   $('#start-button').click(function() {
-    player1Name = $('#start-name').val();
-    if (player1Name === '') {
-      $('#start-button').before('<p style="color, red" id="name-error">Please enter a name for player</p>')
-    } else {
+    if (gameType === 'computer') {
+      player1Name = $('#start-name').val();
+      if (player1Name === '') {
+        $('#name-error').show();
+      } else {
+        $('#player-1-name').text('Player 1: ' + player1Name);
+        $('#player-2-name').text('Player 2: Computer');
+        clickSpaceListener();
+        $board.show();
+        $startScreen.hide();
+        hoverImageListener();
+        $('#name-error').hide();
+      }
+    } else if (gameType === '2-player') {
+      clickSpaceListener();
       $board.show();
       $startScreen.hide();
       hoverImageListener();
-      clickSpaceListener();
-      $('#player-1-name').text('Player 1: ' + player1Name);
-      if ($('#name-error')) {
-        $('#name-error').remove();
-      }
-      $('#start-name').val('');
     }
   });
 
@@ -48,24 +72,46 @@
    * spaces, then other player is made active.
    **************************************************************************
    */
-  function takeTurn(boardspace) {
-    if (playerXActive) {
-      boardspace.addClass('box-filled-2');
-      playerXActive = false;
-      playerOActive = true;
-      $playerO.addClass('active');
-      $playerX.removeClass('active');
-      xSpaces.push(boardspace.attr('id'));
-    } else if (playerOActive) {
+  function playerTurn(boardspace) {
+    if (playerOActive) {
       boardspace.addClass('box-filled-1');
       playerOActive = false;
       playerXActive = true;
       $playerX.addClass('active');
       $playerO.removeClass('active');
       oSpaces.push(boardspace.attr('id'));
+      completeTurn(boardspace);
+    } else if (playerXActive) {
+      boardspace.addClass('box-filled-2');
+      playerXActive = false;
+      playerOActive = true;
+      $playerO.addClass('active');
+      $playerX.removeClass('active');
+      xSpaces.push(boardspace.attr('id'));
+      completeTurn(boardspace);
     }
-
   }
+
+  /***************************************************************************
+   * Gets the available game spaces and chooses one using a random number.
+   * Selects the game space for X and yields the turn to the O player. The
+   * completeTurn function is called to disable the space and check for a win.
+   ***************************************************************************
+   */
+   function computerTurn() {
+     let $freeSpaces = $('.box').not('.box-filled-1, .box-filled-2');
+     let length = $freeSpaces.length;
+     let number = Math.floor(Math.random()*(length));
+     let $box = $freeSpaces.eq(number);
+
+     $box.addClass('box-filled-2');
+     playerXActive = false;
+     playerOActive = true;
+     $playerO.addClass('active');
+     $playerX.removeClass('active');
+     xSpaces.push($box.attr('id'));
+     completeTurn($box);
+   }
 
   /***************************************************************************
    * Checks each space to see if it has been filled by a player. If all spaces
@@ -148,15 +194,28 @@
    */
   function endGame() {
     $board.hide();
-    if (oWins) {
-      $endScreen.addClass('screen-win-one');
-      $('.message').text('Winner:' + player1Name);
-    } else if (xWins) {
-      $endScreen.addClass('screen-win-two');
-      $('.message').text('Winner: Computer');
-    } else {
-      $endScreen.addClass('screen-win-tie');
-      $('.message').text("It's a draw");
+    if (gameType === 'computer') {
+      if (oWins) {
+        $endScreen.addClass('screen-win-one');
+        $('.message').text('Winner:  ' + player1Name);
+      } else if (xWins) {
+        $endScreen.addClass('screen-win-two');
+        $('.message').text('Winner:  Computer');
+      } else {
+        $endScreen.addClass('screen-win-tie');
+        $('.message').text("It's a draw");
+      }
+    } else if (gameType === '2-player') {
+      if (oWins) {
+        $endScreen.addClass('screen-win-one');
+        $('.message').text('Winner');
+      } else if (xWins) {
+        $endScreen.addClass('screen-win-two');
+        $('.message').text('Winner');
+      } else {
+        $endScreen.addClass('screen-win-tie');
+        $('.message').text("It's a draw");
+      }
     }
     $endScreen.show();
   }
@@ -178,33 +237,52 @@
     xSpaces = [];
 
     //reset dynamically added classes and images
+    $('.box').removeProp('style');
     $('#player1').addClass('active');
     $('#player2').removeClass('active');
     $('.box-filled-1').removeClass('box-filled-1');
     $('.box-filled-2').removeClass('box-filled-2');
-    $('.box').css('background-image', 'none');
     $('.screen-win').removeClass('screen-win-one');
     $('.screen-win').removeClass('screen-win-two');
     $('.screen-win').removeClass('screen-win-tie');
   }
 
+  /****************************************************************************
+   * Complete's a turn by disabling events on the space and checking the win
+   * conditions to see if the game should end. Ends game if applicable.
+   ****************************************************************************
+   */
+  function completeTurn(gameSpace) {
+    gameSpace.off('click');
+    gameSpace.off('mouseenter');
+    gameSpace.off('mouseleave');
+    hasOWon();
+    hasXwon();
+    isGameOver();
+    if (gameOver == true) {
+      setTimeout(endGame, 500);
+    }
+  }
+
   /**************************************************************************
    * Board space hover event listener, shows the symbol of the active player
    * when they hover over open spaces. Inside a function to avoid double
-   * listeners in new games on spaces that weren't used in previous game.
+   * listeners in new games on spaces that weren't used in previous game. Only
+   * O will show on hover when playing against the computer, otherwise O and X
+   * will alternate with the appropriate turns.
    **************************************************************************
    */
   function hoverImageListener() {
     $('.box').hover(function() {
       let $space = $(this);
-      if (playerXActive) {
-        $space.css('background-image', 'url(img/x.svg)')
-      } else if (playerOActive) {
+      if (playerXActive && gameType === '2-player') {
+        $space.css('background-image', 'url(img/x.svg)');
+      } else {
         $space.css('background-image', 'url(img/o.svg)');
       }
     }, function() {
         let $space = $(this);
-        $space.css('background-image', 'none');
+        $space.removeProp('style');
     });
   }
 
@@ -219,15 +297,9 @@
   function clickSpaceListener() {
     $('.box').click(function() {
       let $box = $(this);
-      $box.off('click');
-      $box.off('mouseenter');
-      $box.off('mouseleave');
-      takeTurn($box);
-      hasOWon();
-      hasXwon();
-      isGameOver();
-      if (gameOver == true) {
-        setTimeout(endGame, 500);
+      playerTurn($box);
+      if (gameType === 'computer') {
+        setTimeout(computerTurn, 100);
       }
     });
   }
@@ -241,7 +313,6 @@
     resetGame();
     $endScreen.hide();
     $board.show();
-    //$startScreen.show();
     $('.box').off('click');
     $('.box').off('mouseenter');
     $('.box').off('mouseleave');
@@ -249,4 +320,4 @@
     clickSpaceListener();
   });
 
-//}());
+}());
